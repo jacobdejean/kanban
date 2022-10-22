@@ -1,14 +1,21 @@
 import { usePushableState } from '../interactivity'
 import styled from 'styled-components'
-import Task from './Task'
+import Task, { TaskProps } from './Task'
+import { REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js'
 
 export interface BoardProps {
+    id: string,
+    name: string,
     stages: Stage[]
-}
+}  
 
 export interface Stage {
-    title: string,
-    tasks: string[]
+    name: string,
+    tasks: TaskProps[]
+}
+
+interface StageProps {
+    width: string
 }
 
 const fetchTasks = async () => {
@@ -17,25 +24,24 @@ const fetchTasks = async () => {
 
 export default function Board(props: BoardProps) {
     const [stages, pushStage] = usePushableState<Stage>(props.stages)
-    
 
     return (
         <Wrapper>
             { stages.map(stage => 
-            <Stage>
-                <h2>{stage.title}</h2>
+            <Stage width={`calc(100vw / ${stages.length})`}>
+                <h2>{stage.name}</h2>
                 <TaskHolder>
-                    { stage.tasks.map(task => <Task />)}
+                    { stage.tasks.map(task => <Task title={task.title} description={task.description} tags={task.tags}/>)}
                 </TaskHolder>
             </Stage>)}
-            <AddStage>+</AddStage>
+            <AddStage onClick={_ => pushStage({name: 'NEW STAGE', tasks: []}) }>+</AddStage>
         </Wrapper>
     )
 }
 
 const Wrapper = styled.div`
     width: 100%;
-    height: 100%;
+    min-height: 100%;
 
     display: flex;
     color: white;
@@ -46,11 +52,12 @@ const Wrapper = styled.div`
     }
 `
 
-const Stage = styled.div`
+const Stage = styled.div<StageProps>`
     border: solid 1px #7604F1;
     border-right: none;
     flex: 1 1 auto;
     padding: 0.5rem;
+    max-width: ${props => props.width};
 `
 
 const AddStage = styled.div`
@@ -60,6 +67,7 @@ const AddStage = styled.div`
     align-items: center;
     justify-content: center;
     font-size: 3rem;
+    margin-right: 1rem;
 
     &:hover {
         background-color: black;
@@ -67,5 +75,8 @@ const AddStage = styled.div`
 `
 
 const TaskHolder = styled.div`
-    background-color: white;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    row-gap: 0.5rem;
 `

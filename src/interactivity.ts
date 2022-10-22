@@ -2,11 +2,15 @@
 
 import { useState } from 'react'
 
-export function usePushableState<Type>(array: Type[]): [Type[], (item: Type) => void] {
+export interface PushableStateOpts {
+  deepCopy: boolean
+}
+
+export function usePushableState<Type>(array: Type[], opts?: PushableStateOpts): [Type[], (item: Type) => void] {
     let [state, setState] = useState(array);
   
     let pushState = (item: Type) => {
-      let n = [...state]
+      let n = opts?.deepCopy ? Object.assign({}, state) : [...state]
       n.push(item)
       setState(n)
     }

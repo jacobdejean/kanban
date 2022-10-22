@@ -37,7 +37,7 @@ export default function Auth(props: AuthProps) {
                     <Send>SEND LINK</Send>
                     <p>Go <a>here</a> for demo</p>
                 </Form>
-                <Error>{error.message}{error.stack}</Error>
+                <Error>{error.message}</Error>
             </Container>
         </Wrapper>
     )
