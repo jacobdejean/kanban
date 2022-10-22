@@ -3,8 +3,9 @@ import Auth from './components/Auth.js'
 import { gql, useMutation, useQuery } from 'urql'
 import styled from 'styled-components'
 import Task from './components/Task.js'
-import Board from './components/Board.js'
+import Board, { BoardProps, Stage } from './components/Board.js'
 import UserProvider, { useUserSession } from './components/UserProvider.js'
+import { usePushableState } from './interactivity.js'
 
 const GET_BOARDS = gql`
   query GetBoards($id: UUID!) {
@@ -51,22 +52,17 @@ export default function App() {
     pause: !session
   })
 
+  const boardsResponse = getBoardsQuery.data?.profilesCollection?.edges?.[0].node.boards ?? '{ "active": [] }'
+  //const [boards, pushBoard] = usePushableState<BoardProps>(session ? JSON.parse(boardsResponse).active : [], { deepCopy: true }) 
+  const boards = session ? JSON.parse(boardsResponse).active : []
+  //console.log(boards)
+
   if(!session)
     return <Auth onSkip={() => setDemo(true)}/>
-  
-  console.log(`Get Boards Query (on ${session?.user.id}): `, getBoardsQuery.data?.profilesCollection?.edges?.[0].node.boards)
-
-  let stages = [
-    {title: 'BACKLOG', tasks: ['id', 'id']},
-    {title: 'PROG', tasks: ['id', 'id']},
-    {title: 'DONE', tasks: ['id', 'id']}
-  ]
-
-  
 
   return (
     <Globals>
-      <Board stages={stages}/>
+      { boards.map((board: BoardProps) => <Board id={board.id} name={board.name} stages={board.stages}></Board>) }
     </Globals>
   )
 }
@@ -86,9 +82,8 @@ const Globals = styled.div`
   }
 
   font-family: 'Prompt';
+  height: 100%;
 
-  height: 100vh;
-  width: 100vw;
   overflow: none;
   background-color: #242038;
 
