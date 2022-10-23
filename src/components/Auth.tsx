@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import styled from 'styled-components'
-import { AuthError } from '@supabase/supabase-js'
+import { AuthError, Session } from '@supabase/supabase-js'
 import { useSupabaseClient } from './SupabaseProvider'
+import yeast from 'yeast'
 
 export interface AuthProps {
     onSkip: () => void

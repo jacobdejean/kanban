@@ -1,70 +1,123 @@
-import { useState, useEffect } from 'react'
-import Auth from './components/Auth.js'
-import { gql, useMutation, useQuery } from 'urql'
-import styled from 'styled-components'
-import Task from './components/Task.js'
-import Board, { BoardProps, Stage } from './components/Board.js'
-import UserProvider, { useUserSession } from './components/UserProvider.js'
-import { usePushableState } from './interactivity.js'
+import { useState, useEffect } from 'react';
+import Auth from './components/Auth.js';
+import { gql, Mutation, useMutation, useQuery } from 'urql';
+import styled from 'styled-components';
+import Task from './components/Task.js';
+import Board, { BoardProps, Stage } from './components/Board.js';
+import UserProvider, { useUserSession } from './components/UserProvider.js';
+import { usePushableState } from './interactivity.js';
+import yeast from 'yeast';
+import { useSupabaseClient } from './components/SupabaseProvider.js';
 
-const GET_BOARDS = gql`
-  query GetBoards($id: UUID!) {
-    profilesCollection(filter: { id: { eq: $id}}) {
+const GET_BOARD = gql`
+  query GetBoard($id: UUID!) {
+    profilesCollection(filter: { id: { eq: $id } }) {
       edges {
         node {
-          boards
+          board
         }
       }
     }
   }
-` 
+`;
 
-const CREATE_PROFILE = gql`
-  mutation CreateProfile($id: UUID!) {
-    insert_profiles(objects: [{ id: $id }]) {
-      returning {
-        boards
+const UPDATE_BOARD = gql`
+  mutation UpdateBoard($id: UUID!, $newBoard: String!) {
+    updateProfileCollection(filter: { id: { eq: $id } }, set: { board: $newBoard }) {
+      affectedCount
+      records {
+        board
       }
     }
   }
-`
-
-// assigns board ID to profile with given id
-const ASSIGN_BOARD = gql`
-  mutation ($profileId: UUID!, $boardId: UUID!) {
-    update_profiles(where: { id: {_eq: $profileId}}, _set: {boards: [$boardId]}) {
-      affected_rows
-      returning {
-        id
-        boards
-      }
-    }
-  }
-`
+`;
 
 export default function App() {
-  const [demo, setDemo] = useState(false)
-  const session = useUserSession()
+  const [demo, setDemo] = useState(false);
+  const session = useUserSession();
+  const [updateBoardResult, updateBoard] = useMutation(UPDATE_BOARD);
+  const supabase = useSupabaseClient();
 
-  const [getBoardsQuery] = useQuery({
-    query: GET_BOARDS,
+  const [getBoardQuery] = useQuery({
+    query: GET_BOARD,
     variables: { id: session?.user.id },
-    pause: !session
-  })
+    pause: !session,
+  });
 
-  const boardsResponse = getBoardsQuery.data?.profilesCollection?.edges?.[0].node.boards ?? '{ "active": [] }'
-  //const [boards, pushBoard] = usePushableState<BoardProps>(session ? JSON.parse(boardsResponse).active : [], { deepCopy: true }) 
-  const boards = session ? JSON.parse(boardsResponse).active : []
+  const boardResponse =
+    getBoardQuery.data?.profilesCollection?.edges?.[0].node.board ??
+    `{ "id": "${yeast()}", "name": "BOARD", "stages": [] }`;
+  //const [boards, pushBoard] = usePushableState<BoardProps>(session ? JSON.parse(boardsResponse).active : [], { deepCopy: true })
+  const board = !session ? { id: yeast(), name: 'BOARD', stages: [] } : JSON.parse(boardResponse);
+
   //console.log(boards)
 
-  if(!session)
-    return <Auth onSkip={() => setDemo(true)}/>
+  useEffect(() => {
+    createProfile().then((res) => console.log(res));
+  }, []);
+
+  async function createProfile() {
+    return await supabase.from('profiles').insert([
+      {
+        id: session?.user.id,
+        board: {
+          id: yeast(),
+          name: 'New Board',
+          stages: [
+            {
+              name: 'BACKLOG',
+              tasks: [],
+              id: 'OG3We1j',
+            },
+            {
+              title: 'Logo',
+              description: 'Make various logos',
+              tags: ['DESIGN'],
+              id: 'OG3We1j.0',
+            },
+            {
+              name: 'PROG',
+              tasks: [
+                {
+                  title: 'Schemas',
+                  description: 'Designed needed schemas',
+                  tags: ['BACKEND'],
+                  id: 'OG3We1j.3',
+                },
+              ],
+              id: 'OG3We1j.2',
+            },
+            {
+              name: 'DONE',
+              tasks: [
+                {
+                  title: 'Hero Graphic',
+                  description: "Finish graphic for hero section's background",
+                  tags: ['DESIGN'],
+                  id: 'OG3We1j.1',
+                },
+              ],
+              id: 'OG3We1j.4',
+            },
+          ],
+        },
+      },
+    ]);
+  }
+
+  if (!session) return <Auth onSkip={() => setDemo(true)} />;
 
   return (
     <Globals>
-      { boards.map((board: BoardProps) => <Board id={board.id} name={board.name} stages={board.stages}></Board>) }
+      <Board
+        key={board.id}
+        id={board.id}
+        name={board.name}
+        stages={board.stages}
+        onUpdate={updateBoard}
+      ></Board>
     </Globals>
-  )
+  );
 }
 
 const Globals = styled.div`
@@ -88,7 +141,6 @@ const Globals = styled.div`
   background-color: #242038;
 
   a {
-    color: #7604F1;
+    color: #7604f1;
   }
-`
-
+`;
