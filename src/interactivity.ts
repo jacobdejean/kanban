@@ -31,9 +31,7 @@ export function useLengthyRef<Type>(length: number, value: Type) {
   return ([] as React.Ref<Type>[]).fill(useRef(value), 0, length);
 }
 
-export function useFilter<Type>(
-  array: Type[],
-  predicate: (value: Type, filter: { search: string; contextId: string }) => boolean
+export function useFilter<Type>(array: Type[], predicate: (value: Type, filter: { search: string; contextId: string }) => boolean
 ): [Type[], (filter: { search: string; contextId: string }) => void] {
   const [filter, _setFilter] = useState({ search: "", contextId: "none" });
 

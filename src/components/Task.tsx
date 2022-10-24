@@ -10,11 +10,12 @@ export interface TaskProps {
   id?: string;
   description: string;
   tags: TagIndex[];
-  stageId?: string;
+  stageId: string;
 }
 
 export interface TaskWrapperProps {
   highlighted: boolean;
+  visibility: boolean;
 }
 
 export interface TaskNameProps {
@@ -32,6 +33,8 @@ export default function Task(
     addTag: (context: { taskId: string; stageId: string }, tag: TagProps) => void;
     mutateTag: (tagID: string, mutation: TagProps) => void;
     changeTagIndex: (context: { taskId: string; stageId: string, tagId: string }, tagIndex: string) => void;
+    removeTask: (context: { taskId: string; stageId: string }) => void;
+    visibility: boolean;
     allTags: TagProps[];
   }
 ) {
@@ -65,6 +68,7 @@ export default function Task(
     <Wrapper
       draggable={!editMode}
       highlighted={editMode}
+      visibility={props.visibility}
       onDoubleClick={evt => startEdit(evt)}
       onDragOver={evt => evt.preventDefault()}
       onDragStart={evt => {
@@ -92,7 +96,9 @@ export default function Task(
         }
         >
         </QuickAction>
-        <QuickAction icon={"/x-lg.svg"} onClick={_ => {  }}></QuickAction>
+        <QuickAction icon={"/x-lg.svg"} onClick={_ => { 
+            props.removeTask({taskId: props.id ?? '', stageId: props.stageId})
+         }}></QuickAction>
       </QuickActions>
     </Wrapper>
   );
@@ -103,15 +109,17 @@ const Wrapper = styled.div<TaskWrapperProps>`
   background-color: white;
   padding: 0.5rem;
   display: flex;
+  align-items: center;
   column-gap: 1rem;
   user-select: none;
   cursor: grab;
+  opacity: ${props => props.visibility ? '100%' : '25%'};
 
   &:hover {
     outline: solid 2px #7604f1;
 
     #actions {
-      width: 4rem;
+      width: auto;
     }
   }
 
