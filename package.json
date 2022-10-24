@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "start": "npm run dev"
+    "start": "vite --host"
   },
   "dependencies": {
     "@apollo/client": "^3.7.0",
