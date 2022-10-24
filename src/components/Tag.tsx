@@ -31,6 +31,7 @@ export default function Tag(
     setEditMode(true);
     evt.stopPropagation();
     evt.preventDefault();
+    setOpen(false)
   }
 
   function completeEdit(evt: React.FocusEvent | React.KeyboardEvent) {
@@ -54,7 +55,7 @@ export default function Tag(
           }}
         />
       ) : (
-        <Option value={unindexedTab.value} color={unindexedTab.color} onClick={_ => setOpen(true)} onDoubleClick={evt => startEdit(evt)}>
+        <Option value={unindexedTab.value} color={unindexedTab.color} onClick={_ => setOpen(!open)} onDoubleClick={evt => startEdit(evt)}>
           {unindexedTab.value}
         </Option>
       )}
