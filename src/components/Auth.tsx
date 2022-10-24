@@ -27,6 +27,7 @@ export default function Auth(props: AuthProps) {
     return (
         <Wrapper>
             <Container>
+                KANBAN
                 <Form onSubmit={handleLogin}>
                     <Label htmlFor={'email'}>LOGIN</Label>
                     <Input
@@ -36,10 +37,11 @@ export default function Auth(props: AuthProps) {
                         value={email}
                         onChange={e => setEmail(e.target.value)} />
                     <Send>SEND LINK</Send>
-                    <p>Go <a>here</a> for demo</p>
                 </Form>
+                { loading ? <Message>Magic link sent.</Message> : <></> }
                 <Error>{error.message}</Error>
             </Container>
+            <a href="https://github.com/jacobdejean/kanban">github.com/jacobdejean/kanban</a>
         </Wrapper>
     )
 }
@@ -48,9 +50,17 @@ const Wrapper = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-direction: column;
+    row-gap: 1rem;
+
+    font-family: 'Prompt';
 
     width: 100%;
     height: 100%;
+
+    a {
+        color: #CAFE48;
+    }
 `
 
 const Container = styled.div`
@@ -105,9 +115,18 @@ const Send = styled.button`
     letter-spacing: 1px;
     font-family: 'Prompt';
     margin-bottom: 1rem;
+    cursor: pointer;
+    
+    &:active {
+
+    }
 `
 
 const Error = styled.p`
     color: red;
+`
 
+const Message = styled.p`
+    color: #7604F1;
+    margin: 0;
 `
