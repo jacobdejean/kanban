@@ -10,11 +10,13 @@ import Search from "./Search";
 import { gql, OperationResult } from "urql";
 import { useSupabaseClient } from "./SupabaseProvider";
 import { useUserSession } from "./UserProvider";
+import Tag, { TagProps } from "./Tag";
 
 export interface BoardProps {
   id: string;
   name: string;
   stages: Stage[];
+  allTags: TagProps[];
 }
 
 export interface Stage {
@@ -28,39 +30,26 @@ interface StageProps {
 }
 
 interface QuickActionProps {
-    icon: string
+  icon: string;
 }
 
-export default function Board(
-  props: BoardProps & {
-    onUpdate: (board: BoardProps) => Promise<OperationResult<any, object>>;
-  }
-) {
+export default function Board( props: BoardProps) {
   const [stages, pushStage] = usePushableState<Stage>(props.stages);
   // this is maintained separately of the tasks actually in stages. remember to sync
   const [tasks, pushTask] = usePushableState<TaskProps>(stages.map(stage => stage.tasks).flat(1));
+  const [tags, pushTag, setTagValue] = usePushableState<TagProps>(props.allTags)
   const [filteredTasks, setFilter] = useFilter<TaskProps>(tasks, globalSearchPredicate);
   const [localFilteredTasks, setLocalFilter] = useFilter<TaskProps>(tasks, localSearchPredicate);
   const [pickupStageId, setPickupStageId] = useState("none");
   const [dropStageId, setDropStageId] = useState("none");
   const [transientTask, setTransientTask] = useState<TaskProps | null>(null);
+  const [lastModifiedTime, setLastModifiedTime] = useState(new Date())
 
   const pickupStage = stages.find(stage => stage.id === pickupStageId);
   const dropStage = stages.find(stage => stage.id === dropStageId) ?? pickupStage;
 
   const supabase = useSupabaseClient();
   const session = useUserSession();
-
-  function onDragEnter(evt: React.DragEvent) {
-    const target = evt.target as HTMLDivElement;
-
-    setDropStageId(target.getAttribute("data-id") ?? "none");
-  }
-
-  function onDragStart(stageId: string, taskId: string) {
-    setTransientTask(tasks.find(task => task.id === taskId) ?? tasks[0]);
-    setPickupStageId(stageId);
-  }
 
   async function save() {
     console.log("saving", stages);
@@ -71,9 +60,21 @@ export default function Board(
           id: props.id,
           name: props.name,
           stages: stages,
+          allTags: tags
         },
       })
       .eq("id", session?.user.id);
+  }
+
+  function onDragEnter(evt: React.DragEvent) {
+    const target = evt.target as HTMLDivElement;
+
+    setDropStageId(target.getAttribute("data-id") ?? "none");
+  }
+
+  function onDragStart(stageId: string, taskId: string) {
+    setTransientTask(tasks.find(task => task.id === taskId) ?? tasks[0]);
+    setPickupStageId(stageId);
   }
 
   function drop(evt: React.DragEvent) {
@@ -95,30 +96,60 @@ export default function Board(
   }
 
   function mutateTaskDescription(context: { taskId: string; stageId: string }, description: string) {
-    const stage = stages[stages.findIndex(stage => stage.id === context.stageId)]
+    const stage = stages[stages.findIndex(stage => stage.id === context.stageId)];
 
-    stage.tasks[stage.tasks.findIndex(task => task.id === context.taskId)].description =
-      description;
+    stage.tasks[stage.tasks.findIndex(task => task.id === context.taskId)].description = description;
 
     save().then(res => console.log(res, description));
   }
 
   function createTask(stageId: string, properties: TaskProps) {
-    const stage = stages[stages.findIndex(stage => stage.id === stageId)]
+    const stage = stages[stages.findIndex(stage => stage.id === stageId)];
 
-    stage.tasks.push(properties)
+    stage.tasks.push(properties);
 
-    pushTask(properties)
+    pushTask(properties);
 
     save().then(res => console.log(res, properties));
   }
 
   function blankTask() {
     return {
-        title: '',
-        description: 'Empty task',
-        tags: []
-    }
+      title: "",
+      description: "Empty task",
+      tags: [],
+    };
+  }
+
+  function addTag(context: { taskId: string; stageId: string }, tag: TagProps) {
+    const stage = stages[stages.findIndex(stage => stage.id === context.stageId)];
+    const task = stage.tasks[stage.tasks.findIndex(task => task.id === context.taskId)];
+    const id = yeast()
+    task.tags.push({ id: id });
+
+    pushTag({
+        id: id,
+        value: tag.value,
+        color: tag.color
+    })
+
+    save().then(res => console.log(res, tag));
+  }
+
+  function changeTagIndex(context: { taskId: string; stageId: string, tagId: string }, tagIndex: string) {
+    console.log(context)
+    const stage = stages[stages.findIndex(stage => stage.id === context.stageId)];
+    const task = stage.tasks[stage.tasks.findIndex(task => task.id === context.taskId)];
+    const tag = task.tags[task.tags.findIndex(tag => tag.id === context.tagId)]
+
+    tag.id = tagIndex
+    setLastModifiedTime(new Date())
+    save().then(res => console.log(res, tag));
+  }
+
+  function mutateTag(tagID: string, mutation: TagProps) {
+    setTagValue(tags.findIndex(tag => tag.id === tagID), mutation)
+    save().then(res => console.log(res, mutation));
   }
 
   function globalSearchPredicate(value: TaskProps, filter: { search: string; contextId: string }) {
@@ -129,7 +160,10 @@ export default function Board(
     return value.stageId === filter.contextId;
   }
 
-  console.log(localFilteredTasks);
+  for(let i = 0; i < tags.length; i++) {
+    !tags[i].id && (tags[i].id = yeast())
+  }
+
   return (
     <Wrapper>
       <Toolbar onFilter={setFilter} />
@@ -147,7 +181,9 @@ export default function Board(
             >
               <StageHeader>
                 <h2>{stage.name}</h2>
-                <QuickAction icon='/asterisk.svg' onClick={_ => createTask(stage.id ?? '', blankTask())}>NEW TASK</QuickAction>
+                <QuickAction icon="/asterisk.svg" onClick={_ => createTask(stage.id ?? "", blankTask())}>
+                  NEW TASK
+                </QuickAction>
               </StageHeader>
               <Search whiteBackground={true} placeholder={"SEARCH"} onFilter={setLocalFilter} contextId={stage.id} />
               <Tasks>
@@ -163,7 +199,11 @@ export default function Board(
                         stageId={stage.id ?? ""}
                         tags={task.tags}
                         onDragStart={onDragStart}
+                        allTags={tags}
                         mutateDescription={mutateTaskDescription}
+                        addTag={addTag}
+                        mutateTag={mutateTag}
+                        changeTagIndex={changeTagIndex}
                       />
                     );
                   })}
@@ -177,7 +217,11 @@ export default function Board(
                     stageId={stage.id ?? ""}
                     tags={transientTask.tags}
                     onDragStart={onDragStart}
+                    allTags={tags}
                     mutateDescription={() => {}}
+                    addTag={() => {}}
+                    mutateTag={() => {}}
+                    changeTagIndex={() => {}}
                   />
                 </DropPreview>
               )}
@@ -224,6 +268,7 @@ const Stage = styled.div<StageProps>`
   row-gap: 1rem;
   background-color: white;
   color: black;
+  overflow: hidden;
 `;
 
 const AddStage = styled.div`
@@ -253,32 +298,32 @@ const DropPreview = styled.div`
 `;
 
 const StageHeader = styled.div`
-    display: flex;
-    width: 100%;
-`
+  display: flex;
+  width: 100%;
+`;
 
 const QuickAction = styled.button<QuickActionProps>`
-    display: flex;
-    align-items: center;
-    font-family: 'Prompt';
-    font-weight: 500;
-    font-size: 1rem;
-    background: none;
-    border: none;
-    padding: 9px 15px 9px 15px;
-    cursor: pointer;
+  display: flex;
+  align-items: center;
+  font-family: "Prompt";
+  font-weight: 500;
+  font-size: 1rem;
+  background: none;
+  border: none;
+  padding: 9px 15px 9px 15px;
+  cursor: pointer;
 
-    &:hover {
-        background-color: #7604f1;
-        color: white;
-
-        &::before {
-            filter: invert(100%);
-        }
-    }
+  &:hover {
+    background-color: #7604f1;
+    color: white;
 
     &::before {
-        content: url(${props => props.icon});
-        margin-right: 0.5rem;
+      filter: invert(100%);
     }
-`
+  }
+
+  &::before {
+    content: url(${props => props.icon});
+    margin-right: 0.5rem;
+  }
+`;

@@ -21,21 +21,9 @@ const GET_BOARD = gql`
   }
 `;
 
-const UPDATE_BOARD = gql`
-  mutation UpdateBoard($id: UUID!, $newBoard: String!) {
-    updateProfileCollection(filter: { id: { eq: $id } }, set: { board: $newBoard }) {
-      affectedCount
-      records {
-        board
-      }
-    }
-  }
-`;
-
 export default function App() {
   const [demo, setDemo] = useState(false);
   const session = useUserSession();
-  const [updateBoardResult, updateBoard] = useMutation(UPDATE_BOARD);
   const supabase = useSupabaseClient();
 
   const [getBoardQuery] = useQuery({
@@ -44,65 +32,78 @@ export default function App() {
     pause: !session,
   });
 
-  const boardResponse =
-    getBoardQuery.data?.profilesCollection?.edges?.[0].node.board ??
-    `{ "id": "${yeast()}", "name": "BOARD", "stages": [] }`;
-  //const [boards, pushBoard] = usePushableState<BoardProps>(session ? JSON.parse(boardsResponse).active : [], { deepCopy: true })
-  const board = !session ? { id: yeast(), name: 'BOARD', stages: [] } : JSON.parse(boardResponse);
-
-  //console.log(boards)
-
-  useEffect(() => {
-    createProfile().then((res) => console.log(res));
-  }, []);
-
-  async function createProfile() {
-    return await supabase.from('profiles').insert([
-      {
-        id: session?.user.id,
-        board: {
-          id: yeast(),
-          name: 'New Board',
-          stages: [
+  const newProfile = {
+    id: session?.user.id,
+    board: {
+      id: yeast(),
+      name: 'New Board',
+      allTags: [
+        { 
+          id: '0',
+          value: 'DESIGN',
+          color: '#FF8C42'
+        },
+        { 
+          id: '1',
+          value: 'BACKEND',
+          color: '#CAFE48'
+        }
+      ],
+      stages: [
+        {
+          name: 'BACKLOG',
+          tasks: [
             {
-              name: 'BACKLOG',
-              tasks: [],
-              id: 'OG3We1j',
-            },
-            {
-              title: 'Logo',
               description: 'Make various logos',
-              tags: ['DESIGN'],
+              tags: [{id: '0'}],
               id: 'OG3We1j.0',
-            },
+            }
+          ],
+          id: 'OG3We1j',
+        },
+        {
+          name: 'PROG',
+          tasks: [
             {
-              name: 'PROG',
-              tasks: [
-                {
-                  title: 'Schemas',
-                  description: 'Designed needed schemas',
-                  tags: ['BACKEND'],
-                  id: 'OG3We1j.3',
-                },
-              ],
-              id: 'OG3We1j.2',
-            },
-            {
-              name: 'DONE',
-              tasks: [
-                {
-                  title: 'Hero Graphic',
-                  description: "Finish graphic for hero section's background",
-                  tags: ['DESIGN'],
-                  id: 'OG3We1j.1',
-                },
-              ],
-              id: 'OG3We1j.4',
+              description: 'Designed needed schemas',
+              tags: [{id: '1'}],
+              id: 'OG3We1j.3',
             },
           ],
+          id: 'OG3We1j.2',
         },
-      },
-    ]);
+        {
+          name: 'DONE',
+          tasks: [
+            {
+              description: "Finish graphic for hero section's background",
+              tags: [{id: '0'}],
+              id: 'OG3We1j.1',
+            },
+          ],
+          id: 'OG3We1j.4',
+        },
+      ],
+    },
+  }
+
+  let boardResponse = `{ "id": "${yeast()}", "name": "BOARD", "stages": [], "allTags": [] }`
+    
+  try {
+    boardResponse = getBoardQuery.data?.profilesCollection?.edges?.[0].node.board;
+    if(!boardResponse) throw new Error('error, remaking profile')
+  } catch(error) {
+    createProfile().then((res) => console.log(res));
+    boardResponse = JSON.stringify(newProfile)
+  }
+
+  //const [boards, pushBoard] = usePushableState<BoardProps>(session ? JSON.parse(boardsResponse).active : [], { deepCopy: true })
+  const json = JSON.parse(boardResponse)
+  const board = !session ? { id: yeast(), name: 'BOARD', stages: [] } : json.board ?? json;
+  console.log(board)
+
+  async function createProfile() {
+    return await supabase.from('profiles').insert([newProfile]);
   }
 
   if (!session) return <Auth onSkip={() => setDemo(true)} />;
@@ -114,7 +115,7 @@ export default function App() {
         id={board.id}
         name={board.name}
         stages={board.stages}
-        onUpdate={updateBoard}
+        allTags={board.allTags}
       ></Board>
     </Globals>
   );

@@ -16,7 +16,9 @@ interface SearchInputProps {
 
 interface FilterProps {
   selected: boolean;
+  whiteBackground: boolean
 }
+
 
 export const SearchContext = React.createContext('');
 
@@ -34,13 +36,13 @@ export default function Search(props: SearchProps) {
       />
       <FilterOptions>
         FILTER BY
-        <FilterOption selected={filter === 'ALL'} onClick={(_) => setFilter('ALL')}>
+        <FilterOption whiteBackground={props.whiteBackground} selected={filter === 'ALL'} onClick={(_) => setFilter('ALL')}>
           ALL
         </FilterOption>
-        <FilterOption selected={filter === 'NAME'} onClick={(_) => setFilter('NAME')}>
+        <FilterOption whiteBackground={props.whiteBackground} selected={filter === 'NAME'} onClick={(_) => setFilter('NAME')}>
           TASK
         </FilterOption>
-        <FilterOption selected={filter === 'TAG'} onClick={(_) => setFilter('TAG')}>
+        <FilterOption whiteBackground={props.whiteBackground} selected={filter === 'TAG'} onClick={(_) => setFilter('TAG')}>
           TAG
         </FilterOption>
       </FilterOptions>
@@ -108,7 +110,7 @@ const FilterOption = styled.p<FilterProps>`
   ${(props) =>
     props.selected &&
     css`
-      background-color: black;
-      color: white;
+      background-color: ${props.whiteBackground ? 'black' : 'white'};
+      color: ${props.whiteBackground ? 'white' : 'black'};
     `}
 `;
