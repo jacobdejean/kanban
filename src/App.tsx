@@ -106,7 +106,7 @@ export default function App() {
     return await supabase.from('profiles').insert([newProfile]);
   }
 
-  if (!session) return <Auth onSkip={() => setDemo(true)} />;
+  if (!session) return  <Globals><Auth onSkip={() => setDemo(true)} /></Globals>;
 
   return (
     <Globals>
