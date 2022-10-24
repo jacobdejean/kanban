@@ -88,7 +88,7 @@ const Wrapper = styled.div`
 `;
 
 const Option = styled.div<TagProps>`
-  background-color: ${props => props.color};
+  background-color: #CAFE48;
   color: black;
   margin: 0;
   display: flex;
@@ -108,7 +108,7 @@ const EditableOption = styled.input`
   user-select: all;
   pointer-events: all;
 
-  background-color: ${props => props.color};
+  background-color: #CAFE48;
   color: black;
   margin: 0;
   display: flex;

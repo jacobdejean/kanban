@@ -22,7 +22,14 @@ export interface BoardProps {
 export interface Stage {
   id?: string;
   name: string;
-  tasks: TaskProps[];
+  tasks: TaskProps[],
+  filter?: string
+}
+
+export interface StageExport {
+    id?: string,
+    name: string,
+    tasks: TaskProps[]
 }
 
 interface StageProps {
@@ -39,7 +46,7 @@ export default function Board( props: BoardProps) {
   const [tasks, pushTask] = usePushableState<TaskProps>(stages.map(stage => stage.tasks).flat(1));
   const [tags, pushTag, setTagValue] = usePushableState<TagProps>(props.allTags)
   const [filteredTasks, setFilter] = useFilter<TaskProps>(tasks, globalSearchPredicate);
-  const [localFilteredTasks, setLocalFilter] = useFilter<TaskProps>(tasks, localSearchPredicate);
+  const [localFilteredTasks, setLocalFilter] = useFilter<TaskProps>(tasks, globalSearchPredicate);
   const [pickupStageId, setPickupStageId] = useState("none");
   const [dropStageId, setDropStageId] = useState("none");
   const [transientTask, setTransientTask] = useState<TaskProps | null>(null);
@@ -59,7 +66,7 @@ export default function Board( props: BoardProps) {
         board: {
           id: props.id,
           name: props.name,
-          stages: stages,
+          stages: (stages as StageExport[]),
           allTags: tags
         },
       })
@@ -113,11 +120,23 @@ export default function Board( props: BoardProps) {
     save().then(res => console.log(res, properties));
   }
 
-  function blankTask() {
+  function removeTask(context: { taskId: string; stageId: string }) {
+    console.log(context)
+    const stage = stages[stages.findIndex(stage => stage.id === context.stageId)];
+
+    stage.tasks.splice(stage.tasks.findIndex(task => task.id === context.taskId), 1)
+
+    setLastModifiedTime(new Date())
+
+    save().then(res => console.log(res, context));
+  }
+
+  function blankTask(stageId: string) {
     return {
       title: "",
       description: "Empty task",
       tags: [],
+      stageId: stageId
     };
   }
 
@@ -156,10 +175,6 @@ export default function Board( props: BoardProps) {
     return value.description.toLowerCase().includes(filter.search.toLowerCase());
   }
 
-  function localSearchPredicate(value: TaskProps, filter: { search: string; contextId: string }) {
-    return value.stageId === filter.contextId;
-  }
-
   for(let i = 0; i < tags.length; i++) {
     !tags[i].id && (tags[i].id = yeast())
   }
@@ -181,16 +196,15 @@ export default function Board( props: BoardProps) {
             >
               <StageHeader>
                 <h2>{stage.name}</h2>
-                <QuickAction icon="/asterisk.svg" onClick={_ => createTask(stage.id ?? "", blankTask())}>
+                <QuickAction icon="/asterisk.svg" onClick={_ => createTask(stage.id ?? "", blankTask(stage.id ?? ''))}>
                   NEW TASK
                 </QuickAction>
-              </StageHeader>
-              <Search whiteBackground={true} placeholder={"SEARCH"} onFilter={setLocalFilter} contextId={stage.id} />
+              </StageHeader> 
+              <Search whiteBackground={true} placeholder={"SEARCH"} onFilter={filter => { setLocalFilter(filter); return stage.filter = filter.search}} contextId={stage.id}/>
               <Tasks>
-                {stage.tasks
-                  .filter(task => filteredTasks.includes(task))
-                  .map(task => {
+                {stage.tasks.map(task => {
                     !task.id && (task.id = yeast());
+                    task.stageId = stage.id ?? ''
                     return (
                       <Task
                         key={task.id}
@@ -204,6 +218,8 @@ export default function Board( props: BoardProps) {
                         addTag={addTag}
                         mutateTag={mutateTag}
                         changeTagIndex={changeTagIndex}
+                        removeTask={removeTask}
+                        visibility={filteredTasks.includes(task) && ((stage.filter && stage.filter.length > 0) ? task.description.toLowerCase().includes(stage.filter.toLowerCase()) : true)}
                       />
                     );
                   })}
@@ -222,6 +238,8 @@ export default function Board( props: BoardProps) {
                     addTag={() => {}}
                     mutateTag={() => {}}
                     changeTagIndex={() => {}}
+                    removeTask={() => {}}
+                    visibility={true}
                   />
                 </DropPreview>
               )}
@@ -325,5 +343,6 @@ const QuickAction = styled.button<QuickActionProps>`
   &::before {
     content: url(${props => props.icon});
     margin-right: 0.5rem;
+    margin-top: 0.25rem;
   }
 `;
