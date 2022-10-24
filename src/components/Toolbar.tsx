@@ -14,9 +14,9 @@ export default function Toolbar(props: ToolbarProps) {
 
     return (
         <Wrapper>
-            <h2>{session?.user.email?.toUpperCase()}'S KANBAN</h2>
+            <h2>KANBAN</h2>
             <Search placeholder={'SEARCH'} whiteBackground={false} onFilter={props.onFilter} contextId={'none'}/>
-            <Logout onClick={_ => supabase.auth.signOut()}>LOG OUT</Logout>
+            <Logout onClick={_ => supabase.auth.signOut()}>LOG OUT ({session?.user.email?.toUpperCase()})</Logout>
         </Wrapper>
     )
 }

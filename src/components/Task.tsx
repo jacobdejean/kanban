@@ -4,11 +4,12 @@ import styled, { css } from "styled-components";
 import yeast from "yeast";
 import { usePushableState } from "../interactivity";
 import { Stage } from "./Board";
+import Tag, { TagIndex, TagProps } from "./Tag";
 
 export interface TaskProps {
   id?: string;
   description: string;
-  tags: string[];
+  tags: TagIndex[];
   stageId?: string;
 }
 
@@ -20,10 +21,18 @@ export interface TaskNameProps {
   description: string;
 }
 
+interface QuickActionProps {
+  icon: string;
+}
+
 export default function Task(
   props: TaskProps & {
     onDragStart: (stageId: string, taskId: string) => void;
     mutateDescription: (context: { taskId: string; stageId: string }, description: string) => void;
+    addTag: (context: { taskId: string; stageId: string }, tag: TagProps) => void;
+    mutateTag: (tagID: string, mutation: TagProps) => void;
+    changeTagIndex: (context: { taskId: string; stageId: string, tagId: string }, tagIndex: string) => void;
+    allTags: TagProps[];
   }
 ) {
   const [editMode, setEditMode] = useState(false);
@@ -33,7 +42,8 @@ export default function Task(
   let descriptionRef = useRef<HTMLDivElement>(null);
   let editableDescriptionRef = useRef<HTMLInputElement>(null);
 
-  function startEdit() {
+  function startEdit(evt: React.MouseEvent) {
+    evt.stopPropagation();
     setEditMode(true);
 
     editableDescriptionRef.current?.blur();
@@ -47,7 +57,7 @@ export default function Task(
     setDescription(newDescription);
 
     // update user profile here
-    if (description !== newDescription) props.mutateDescription({ taskId: props.id ?? "", stageId: props.stageId ?? '' }, newDescription);
+    if (description !== newDescription) props.mutateDescription({ taskId: props.id ?? "", stageId: props.stageId ?? "" }, newDescription);
   }
 
   // description is passed into sc because react complains about contentdeditable having children
@@ -55,11 +65,11 @@ export default function Task(
     <Wrapper
       draggable={!editMode}
       highlighted={editMode}
-      onDoubleClick={_ => startEdit()}
+      onDoubleClick={evt => startEdit(evt)}
       onDragOver={evt => evt.preventDefault()}
       onDragStart={evt => {
         evt.dataTransfer.setData("task-id", props.id ?? "no-id");
-        props.onDragStart(props.stageId ?? 'none', props.id ?? 'none');
+        props.onDragStart(props.stageId ?? "none", props.id ?? "none");
       }}
     >
       {editMode ? (
@@ -67,13 +77,22 @@ export default function Task(
       ) : (
         <Description ref={descriptionRef} description={description} data-description={description} />
       )}
-      {tags.map(tag => (
-        <Tag key={yeast()} color={"#CAFE48"}>
-          {tag}
-        </Tag>
-      ))}
-      <QuickActions>
-        <QuickAction></QuickAction>
+      <Tags>
+        {tags.map(tag => (
+            <Tag key={tag.id ?? 'ERROR'} id={tag.id ?? ''} all={props.allTags} taskId={props.id ?? ''} stageId={props.stageId ?? ''} options={props.allTags} mutateTag={props.mutateTag} changeTagIndex={props.changeTagIndex}/>
+        ))}
+      </Tags>
+      <QuickActions id={"actions"}>
+        <QuickAction
+          icon={"/star.svg"}
+          
+          onClick={_ => {
+            props.addTag({ taskId: props.id ?? "", stageId: props.stageId ?? "" }, { value: "TAG", color: "#CAFE48" })
+          }
+        }
+        >
+        </QuickAction>
+        <QuickAction icon={"/x-lg.svg"} onClick={_ => {  }}></QuickAction>
       </QuickActions>
     </Wrapper>
   );
@@ -86,9 +105,18 @@ const Wrapper = styled.div<TaskWrapperProps>`
   display: flex;
   column-gap: 1rem;
   user-select: none;
+  cursor: grab;
 
   &:hover {
     outline: solid 2px #7604f1;
+
+    #actions {
+      width: 4rem;
+    }
+  }
+
+  p {
+    margin: 0;
   }
 
   ${props =>
@@ -99,6 +127,11 @@ const Wrapper = styled.div<TaskWrapperProps>`
       user-select: all;
     `}
 `;
+
+const Tags = styled.div`
+    display: flex;
+    column-gap: 0.5rem;
+`
 
 const Description = styled.div<TaskNameProps>`
   flex: 1 1 auto;
@@ -135,24 +168,43 @@ const EditableDescription = styled.input<TaskNameProps>`
   }
 `;
 
-const Tag = styled.div`
-  background-color: #cafe48;
-  color: black;
-  margin: 0;
+const QuickActions = styled.div`
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 3rem;
-  padding-left: 0.25rem;
-  padding-right: 0.25rem;
+  transition: width 0.06s ease-in-out;
+  width: 0;
+  overflow: hidden;
 `;
 
+const QuickAction = styled.button<QuickActionProps>`
+  padding-top: 0.25rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: "Prompt";
+  font-size: 1rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
 
-const QuickActions = styled.div`
-    border-left: solid 2px #7604f1;
-    display: flex;
-`
+  &:hover {
+    background-color: #7604f1;
+    color: white;
 
-const QuickAction = styled.button`
-    
-`
+    &::before {
+      filter: invert(100%);
+    }
+  }
+
+  &::before {
+    content: "";
+    display: inline-block;
+    background-image: url(${props => props.icon});
+    background-size: 1rem 1rem;
+    background-repeat: no-repeat;
+    width: 1rem;
+    height: 1rem;
+    margin-bottom: 0.25rem;
+  }
+`;
